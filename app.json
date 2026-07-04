@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Fogwalk",
+    "slug": "fogwalk",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fogwalk.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0c10",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "package": "com.fogwalk.app",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fogwalk uses your location to reveal the map as you walk."
+        }
+      ]
+    ]
+  }
+}
