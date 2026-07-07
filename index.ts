@@ -1,3 +1,4 @@
+import './src/textDecoderPolyfill'; // must precede h3-js (imported via App)
 import { registerRootComponent } from 'expo';
 
 import App from './App';

@@ -78,20 +78,18 @@ These were decided in July 2026 after prototyping. Change them only if Daniel ex
 
 ### What has NOT been done yet (the immediate frontier)
 
-1. **The app has never been run.** TypeScript compiles (`npx tsc --noEmit` passes) but no
-   simulator or device build has succeeded yet. Expect first-run issues.
-2. **⚠️ Highest-risk item — MapLibre RN component API.** `MapScreen.tsx` imports
-   `{ Map, Camera, GeoJSONSource, Layer }` and passes `initialViewState` to `Camera`.
-   Verify against the actually-installed `@maplibre/maplibre-react-native` v11 API
-   (check `node_modules/@maplibre/maplibre-react-native/lib/typescript/` or its README).
-   Historically this library exported `MapView`, `ShapeSource`, `FillLayer`,
-   `CircleLayer`, and `Camera` with `defaultSettings={{centerCoordinate, zoomLevel}}`.
-   If the current imports don't exist, rewrite `MapScreen.tsx` to the real API,
-   preserving behavior: one fill layer for fog, two circle layers for the user dot,
-   camera `flyTo`/`setCamera` on the ⊙ button.
-3. **Signing:** Daniel must select his Personal Team in Xcode once
-   (Fogwalk target → Signing & Capabilities → Automatically manage signing). An agent
-   cannot do this; ask him.
+1. ~~The app has never been run~~ **RESOLVED July 7, 2026:** builds and runs on the iOS
+   Simulator. Map style, fog overlay, and HUD all render correctly. Two first-run bugs
+   were found and fixed (MapLibre config plugin + TextDecoder polyfill — see §5 gotchas).
+   The MapLibre RN v11 imports in `MapScreen.tsx` (`Map`, `Camera`, `GeoJSONSource`,
+   `Layer`) are confirmed working as written.
+2. **Not yet verified:** live fog reveal during a (simulated or real) walk, SQLite
+   persistence across relaunch, the speed/accuracy filters in practice.
+3. **Device install blocked on hardware:** Daniel's iPhone port doesn't pass data
+   (charge-only cable or lint suspected — untested theories). First Xcode pairing
+   requires one wired connection; after that Wi-Fi works forever. Signing is otherwise
+   set up: Personal Team selected in Xcode (danielvinichenko@gmail.com). A free team
+   can only generate the provisioning profile once a physical device is attached.
 4. Nothing from v0.2+ exists: no stats screen, no walk history, no scout mode, no
    Android testing, no app icon artwork (placeholder assets in `assets/`).
 
@@ -179,9 +177,22 @@ npx expo run:ios --device
 
 **Environment gotchas discovered the hard way (July 2026):**
 - `pod install` crashes with `Unicode Normalization not appropriate for ASCII-8BIT`
-  unless `LANG=en_US.UTF-8` is set (Homebrew Ruby, non-interactive shells).
+  unless `LANG=en_US.UTF-8` is set (Homebrew Ruby, non-interactive shells; now also
+  exported in Daniel's `~/.zprofile`). `expo run:ios` re-runs pod install itself, so
+  the env vars must be set on *that* command too.
 - CocoaPods CDN fails TLS (`certificate verify failed`) unless
   `SSL_CERT_FILE=/etc/ssl/cert.pem` is set.
+- **`@maplibre/maplibre-react-native` MUST be in `app.json` `plugins`.** Its config
+  plugin patches the Podfile to pull the core MapLibre iOS framework via Swift Package
+  Manager. Without it the build fails with `'MapLibre/MapLibre.h' file not found`.
+- **Hermes lacks utf-16le TextDecoder; h3-js needs it at import time**
+  (`RangeError: Unknown encoding: utf-16le` at startup). Fixed by
+  `src/textDecoderPolyfill.ts`, imported first in `index.ts`. Don't remove that import.
+- In sandboxed/agent shells, `expo run:ios` builds and installs fine but its final
+  "activate Simulator window" osascript step fails (exit 1). The app is installed —
+  just start Metro (`npx expo start`) and launch manually:
+  `xcrun simctl launch booted com.fogwalk.app`. Screenshot for verification:
+  `xcrun simctl io booted screenshot out.png`.
 - CocoaPods installed via Homebrew (`brew install cocoapods`), Xcode 26.6 with iOS 26.5
   platform support, Node v24.
 - Open `ios/Fogwalk.xcworkspace` in Xcode, never `Fogwalk.xcodeproj`.
