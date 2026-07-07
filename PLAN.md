@@ -83,8 +83,14 @@ These were decided in July 2026 after prototyping. Change them only if Daniel ex
    were found and fixed (MapLibre config plugin + TextDecoder polyfill — see §5 gotchas).
    The MapLibre RN v11 imports in `MapScreen.tsx` (`Map`, `Camera`, `GeoJSONSource`,
    `Layer`) are confirmed working as written.
-2. **Not yet verified:** live fog reveal during a (simulated or real) walk, SQLite
-   persistence across relaunch, the speed/accuracy filters in practice.
+2. **Verified July 7, 2026 (Simulator, simulated GPS walk):** live fog reveal during a
+   walk and SQLite persistence across relaunch both work. Two runtime bugs were found
+   by dogfooding and fixed: (a) visited cells were never written to the DB — an
+   `isNew` flag set inside a React state updater ran too late (fixed with a
+   synchronous ref mirror in `useWalkSession.ts`); (b) overlapping reveal circles
+   rendered as fog again — fixed by unioning circles before subtraction (§4.3).
+   **Still not verified:** speed/accuracy filters in practice, behavior on a real
+   device with real GPS noise, battery drain.
 3. **Device install blocked on hardware:** Daniel's iPhone port doesn't pass data
    (charge-only cable or lint suspected — untested theories). First Xcode pairing
    requires one wired connection; after that Wi-Fi works forever. Signing is otherwise
@@ -121,19 +127,24 @@ GPS fix (expo-location, ~5s/5m)
 
 ### 4.3 Fog rendering
 
-One GeoJSON `Feature<Polygon>`: outer ring covers the world (±180, ±85.05), each visited
-cell contributes a clockwise 24-point circle (r = 55 m) as an interior hole. Rendered as
-a MapLibre `fill` layer, `rgba(5,7,10,0.90)` — 90% opacity so faint street "ghosts" tease
-through the fog. Holes overlap (55 m radius ≫ 12 m mark spacing) so a walked path is a
-continuous corridor, not beads.
+Fog = `difference(world, union(reveal circles))` computed with `polygon-clipping`,
+rendered as one GeoJSON `Feature<MultiPolygon>` MapLibre `fill` layer,
+`rgba(5,7,10,0.90)` — 90% opacity so faint street "ghosts" tease through the fog.
+Each visited cell contributes a 24-point circle (r = 55 m); circles overlap
+(55 m ≫ 12 m mark spacing) so a walked path is a continuous corridor, not beads.
 
-**Known scaling wall:** rebuilding one polygon with N holes on every new cell is fine for
-hundreds of cells, sluggish by ~2–5k, unusable by tens of thousands. When it hurts (likely
-v0.2), options in order of preference:
-1. Split fog into two sources: static (all cells at session start, built once) + live
-   (only this session's new cells); merge into static on session stop.
-2. Only include holes within the current viewport bounds (rebuild on camera idle).
-3. Pre-merge holes into a MultiPolygon with turf `union` incrementally.
+**Do not "optimize" back to a single polygon with per-circle holes** — that was v1 and
+it's wrong: overlapping interior holes XOR against each other in the triangulator, so
+circle intersections render as fog again (bug found & fixed July 7, 2026).
+
+**Known scaling wall:** the full difference is recomputed on every new cell — fine for
+hundreds of cells, sluggish by a few thousand. When it actually hurts on Daniel's phone
+(likely v0.2), options in order of preference:
+1. Incremental union: cache the running revealed-area MultiPolygon and union just the
+   new circle into it per mark, instead of re-unioning everything.
+2. Split fog into two sources: static (all cells at session start, built once) + live
+   (this session's cells only); merge on session stop.
+3. Only include circles within the current viewport bounds (rebuild on camera idle).
 Don't optimize before it's actually slow on Daniel's phone.
 
 ### 4.4 Map style (approved — treat as design-frozen)

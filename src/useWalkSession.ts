@@ -23,18 +23,18 @@ export function useWalkSession(initialCells: Set<string>): WalkSession {
   const lastMarkRef = useRef<[number, number] | null>(null);
   const distRef = useRef(0);
   const subRef = useRef<Location.LocationSubscription | null>(null);
+  // Synchronous mirror of visitedCells: state updaters run at render time,
+  // so deciding "is this cell new?" inside one drops the DB insert.
+  const cellsRef = useRef<Set<string>>(initialCells);
 
   const addCell = useCallback(async (lat: number, lng: number) => {
     const cellId = coordToCell(lat, lng);
-    let isNew = false;
-    setVisitedCells(prev => {
-      if (prev.has(cellId)) return prev;
-      isNew = true;
-      return new Set([...prev, cellId]);
-    });
-    if (isNew) {
-      await insertVisitedCell(cellId);
-    }
+    if (cellsRef.current.has(cellId)) return;
+    const next = new Set(cellsRef.current);
+    next.add(cellId);
+    cellsRef.current = next;
+    setVisitedCells(next);
+    await insertVisitedCell(cellId);
   }, []);
 
   const handleLocation = useCallback(

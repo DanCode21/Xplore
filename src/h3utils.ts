@@ -1,4 +1,5 @@
 import { latLngToCell, cellToLatLng } from 'h3-js';
+import polygonClipping from 'polygon-clipping';
 
 export const H3_RES = 11;
 export const REVEAL_M = 55;
@@ -25,7 +26,6 @@ export function haversineM(lat1: number, lng1: number, lat2: number, lng2: numbe
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-// Clockwise circle ring (GeoJSON interior hole winding for nonzero fill rule)
 export function circleRing(lat: number, lng: number, radiusM = REVEAL_M, steps = 24): [number, number][] {
   const dLat = radiusM / 111320;
   const dLng = radiusM / (111320 * Math.cos((lat * Math.PI) / 180));
@@ -37,9 +37,11 @@ export function circleRing(lat: number, lng: number, radiusM = REVEAL_M, steps =
   return coords;
 }
 
-// World-covering polygon with a hole for each visited cell.
-// Fog = fill this polygon with rgba(5,7,10,0.90).
-export function buildFogShape(visitedCells: Set<string>): GeoJSON.Feature<GeoJSON.Polygon> {
+// Fog = world minus the union of all reveal circles, as a MultiPolygon.
+// Overlapping circles must be unioned before subtraction: punching them
+// individually as polygon holes makes the overlap regions render as fog
+// again (earcut winding artifact).
+export function buildFogShape(visitedCells: Set<string>): GeoJSON.Feature<GeoJSON.MultiPolygon> {
   const worldRing: [number, number][] = [
     [-180, -85.051129],
     [180, -85.051129],
@@ -47,16 +49,21 @@ export function buildFogShape(visitedCells: Set<string>): GeoJSON.Feature<GeoJSO
     [-180, 85.051129],
     [-180, -85.051129],
   ];
+  const world: [number, number][][] = [worldRing];
 
-  const holes: [number, number][][] = [];
+  const circles: [number, number][][][] = [];
   for (const cellId of visitedCells) {
     const [lat, lng] = cellCenter(cellId);
-    holes.push(circleRing(lat, lng));
+    circles.push([circleRing(lat, lng)]);
   }
+
+  const fog = circles.length === 0
+    ? [world]
+    : polygonClipping.difference(world, ...circles);
 
   return {
     type: 'Feature',
-    geometry: { type: 'Polygon', coordinates: [worldRing, ...holes] },
+    geometry: { type: 'MultiPolygon', coordinates: fog },
     properties: {},
   };
 }
