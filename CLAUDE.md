@@ -1,5 +1,8 @@
 # FOGWALK
 
+> **Full handoff doc: `PLAN.md`** — detailed vision, current state, build gotchas,
+> roadmap with acceptance criteria. Read it before starting significant work.
+
 A mobile app that shows where you have and haven't walked in your city. GTA 5-style map:
 the world starts under near-black fog and streets/places reveal as you physically visit them.
 For exploration, not navigation.
