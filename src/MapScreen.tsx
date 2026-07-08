@@ -60,12 +60,23 @@ export default function MapScreen({ initialCells }: Props) {
           initialViewState={{ center: [4.8952, 52.3702], zoom: 14 }}
         />
 
-        {/* Fog: world polygon with holes punched at each visited cell */}
+        {/* Fog: world minus union of revealed circles */}
         <GeoJSONSource id="fog-src" data={fogShape}>
           <Layer
             id="fog-fill"
             type="fill"
             paint={{ 'fill-color': 'rgba(5,7,10,0.90)', 'fill-antialias': true }}
+          />
+          {/* Feathered boundary: blurred line along the fog edge softens the
+              sharp corners where reveal circles intersect */}
+          <Layer
+            id="fog-edge"
+            type="line"
+            paint={{
+              'line-color': 'rgba(5,7,10,0.90)',
+              'line-width': 14,
+              'line-blur': 14,
+            }}
           />
         </GeoJSONSource>
 

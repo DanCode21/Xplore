@@ -55,8 +55,11 @@ These were decided in July 2026 after prototyping. Change them only if Daniel ex
     Needs "Always" permission.
 - **GPS hygiene:** drop fixes with accuracy worse than 35 m; ignore movement faster than
   15 km/h (driving must not unlock); mark a new cell only after ~12 m of movement.
-- **Reveal geometry:** fog is one world-covering polygon with a circular hole
-  (radius 55 m, 24-segment ring) punched at each visited cell's center.
+- **Reveal geometry:** each visited cell contributes a circle (radius 48 m,
+  24-segment ring) around its center; fog = world minus their union (§4.3).
+  Radius was 55 m originally; Daniel tightened it ~13% after real-walk testing
+  (July 2026: "discovered a little too much"). The fog boundary is feathered with
+  a blurred line layer to soften circle-intersection corners.
 - **Monetization (distant future, don't build):** street-segment completion / "% of every
   street walked" as a potential premium tier. Only relevance today: it's the reason we
   keep raw GPS traces.
@@ -130,8 +133,11 @@ GPS fix (expo-location, ~5s/5m)
 Fog = `difference(world, union(reveal circles))` computed with `polygon-clipping`,
 rendered as one GeoJSON `Feature<MultiPolygon>` MapLibre `fill` layer,
 `rgba(5,7,10,0.90)` — 90% opacity so faint street "ghosts" tease through the fog.
-Each visited cell contributes a 24-point circle (r = 55 m); circles overlap
-(55 m ≫ 12 m mark spacing) so a walked path is a continuous corridor, not beads.
+Each visited cell contributes a 24-point circle (r = 48 m); circles overlap
+(48 m ≫ 12 m mark spacing) so a walked path is a continuous corridor, not beads.
+A second `line` layer on the same source (`line-width` 14, `line-blur` 14, fog color)
+feathers the boundary so circle-intersection corners don't look sharp — GPU-cheap,
+no measurable battery cost.
 
 **Do not "optimize" back to a single polygon with per-circle holes** — that was v1 and
 it's wrong: overlapping interior holes XOR against each other in the triangulator, so
@@ -254,9 +260,17 @@ relaunch shows the same revealed area; a drive reveals nothing; typecheck green.
 
 ### Later / parked (do not start unprompted)
 
-Street-segment completion (OSM map-matching, "100% of Jordaan walked") as premium ·
-cloud backup / device migration (raw-trace export first — cheap insurance, could land
-earlier as a JSON export button) · Android pass · social/sharing · App Store release.
+- **Water-body reveal (Daniel, July 2026):** large bodies of water should become fully
+  revealed once enough of the surrounding shore has been walked — GTA-style (you never
+  "walk" the harbor, but exploring the waterfront should uncover it). Sketch: get water
+  polygons (from the omt `water` source-layer or OSM), compute shoreline cells
+  (`polygonToCells` on the boundary ring), reveal the whole polygon when visited-shoreline
+  ratio crosses a threshold (~30–50%?). Needs design for what "enough" means for rivers
+  vs lakes vs ocean. Do not build until v0.1/v0.2 are solid.
+- Street-segment completion (OSM map-matching, "100% of Jordaan walked") as premium.
+- Cloud backup / device migration (raw-trace export first — cheap insurance, could land
+  earlier as a JSON export button).
+- Android pass · social/sharing · App Store release.
 
 ## 7. Working agreements for any agent on this repo
 

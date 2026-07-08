@@ -2,7 +2,7 @@ import { latLngToCell, cellToLatLng } from 'h3-js';
 import polygonClipping from 'polygon-clipping';
 
 export const H3_RES = 11;
-export const REVEAL_M = 55;
+export const REVEAL_M = 48; // was 55; tightened ~13% (Daniel, July 2026: "discovered a little too much")
 export const MARK_M = 12;
 export const MAX_ACCURACY_M = 35;
 export const MAX_SPEED_MS = 15000 / 3600; // 15 km/h in m/s

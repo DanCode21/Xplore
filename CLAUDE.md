@@ -47,8 +47,9 @@ Apple-Maps-dark-mode × GTA 5 pause-map. Palette (in the prototype's `STYLE` obj
 | Road labels    | `#aebfd4` on `#0d1219` halo, zoom 14+ |
 | Place labels   | `#8fa1b8` minor / `#e4ebf4` major, uppercase, letter-spaced |
 
-Reveal tunables: cell grid ~24 m (`CELL_DEG 0.00022`, stand-in for H3 res 11),
-reveal radius 55 m, mark a cell every 12 m of movement.
+Reveal tunables: cell grid ~24 m (H3 res 11), reveal radius 48 m (tightened from
+55 m after real-walk feedback), mark a cell every 12 m of movement. Fog edge is
+feathered with a blurred line layer.
 
 ## Prototype
 
