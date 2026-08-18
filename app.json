@@ -27,7 +27,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Fogwalk uses your location to reveal the map as you walk."
+          "locationWhenInUsePermission": "Fogwalk uses your location to reveal the map as you walk.",
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ]

@@ -26,7 +26,8 @@ export function haversineM(lat1: number, lng1: number, lat2: number, lng2: numbe
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-export function circleRing(lat: number, lng: number, radiusM = REVEAL_M, steps = 24): [number, number][] {
+// steps 36: smoother reveal edges (Daniel, Aug 2026) at modest extra union cost
+export function circleRing(lat: number, lng: number, radiusM = REVEAL_M, steps = 36): [number, number][] {
   const dLat = radiusM / 111320;
   const dLng = radiusM / (111320 * Math.cos((lat * Math.PI) / 180));
   const coords: [number, number][] = [];

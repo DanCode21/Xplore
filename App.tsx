@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { initDb, getAllVisitedCells } from './src/db';
+import { initDb, getAllVisitedCells, recoverUnfinishedWalks } from './src/db';
 import MapScreen from './src/MapScreen';
 
 export default function App() {
@@ -11,6 +11,7 @@ export default function App() {
   useEffect(() => {
     (async () => {
       await initDb();
+      await recoverUnfinishedWalks();
       const cells = await getAllVisitedCells();
       setInitialCells(new Set(cells));
       setReady(true);

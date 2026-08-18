@@ -15,8 +15,11 @@ import {
   type CameraRef,
 } from '@maplibre/maplibre-react-native';
 import MAP_STYLE from './mapStyle';
-import { buildFogShape } from './h3utils';
+import { buildFogShape, cellCenter } from './h3utils';
 import { useWalkSession } from './useWalkSession';
+
+// Amsterdam Muntplein; only shown on a completely fresh install
+const FALLBACK_CENTER: [number, number] = [4.8952, 52.3702];
 
 type Props = { initialCells: Set<string> };
 
@@ -28,6 +31,15 @@ export default function MapScreen({ initialCells }: Props) {
     () => buildFogShape(session.visitedCells),
     [session.visitedCells],
   );
+
+  // Open on the most recently revealed cell (initialCells preserves DB
+  // insertion order) so the map starts where the user last walked.
+  const initialCenter = useMemo<[number, number]>(() => {
+    const cells = [...initialCells];
+    if (cells.length === 0) return FALLBACK_CENTER;
+    const [lat, lng] = cellCenter(cells[cells.length - 1]);
+    return [lng, lat];
+  }, [initialCells]);
 
   const userShape = useMemo(() => {
     if (!session.position) return null;
@@ -57,7 +69,7 @@ export default function MapScreen({ initialCells }: Props) {
       >
         <Camera
           ref={cameraRef}
-          initialViewState={{ center: [4.8952, 52.3702], zoom: 14 }}
+          initialViewState={{ center: initialCenter, zoom: 14 }}
         />
 
         {/* Fog: world minus union of revealed circles */}
@@ -109,8 +121,12 @@ export default function MapScreen({ initialCells }: Props) {
 
         <View style={styles.stats} pointerEvents="none">
           <Text style={styles.statLine}>
-            <Text style={styles.statValue}>{(session.distanceM / 1000).toFixed(2)}</Text>
-            <Text style={styles.statLabel}> km walked</Text>
+            <Text style={styles.statValue}>
+              {((session.isRecording ? session.distanceM : session.lifetimeM) / 1000).toFixed(2)}
+            </Text>
+            <Text style={styles.statLabel}>
+              {session.isRecording ? ' km this walk' : ' km walked'}
+            </Text>
           </Text>
           <Text style={styles.statLine}>
             <Text style={styles.statValue}>{session.visitedCells.size}</Text>

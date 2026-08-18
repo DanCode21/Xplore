@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { haversineM, MAX_SPEED_MS } from './h3utils';
 
 let db: SQLite.SQLiteDatabase;
 
@@ -57,4 +58,42 @@ export async function insertVisitedCell(h3Index: string): Promise<void> {
 export async function getAllVisitedCells(): Promise<string[]> {
   const rows = await db.getAllAsync<{ h3_index: string }>('SELECT h3_index FROM visited_cells');
   return rows.map(r => r.h3_index);
+}
+
+export async function updateWalkDistance(walkId: number, distanceM: number): Promise<void> {
+  await db.runAsync('UPDATE walks SET distance_m = ? WHERE id = ?', distanceM, walkId);
+}
+
+export async function getLifetimeDistanceM(): Promise<number> {
+  const row = await db.getFirstAsync<{ total: number }>(
+    'SELECT COALESCE(SUM(distance_m), 0) AS total FROM walks',
+  );
+  return row?.total ?? 0;
+}
+
+// Close out walks whose session never ended (app killed mid-recording, or
+// recorded by builds that only wrote distance on STOP): rebuild distance from
+// the raw points with the same teleport gate the live session uses, and stamp
+// ended_at from the last fix. Runs once at app startup, before any session.
+export async function recoverUnfinishedWalks(): Promise<void> {
+  const open = await db.getAllAsync<{ id: number }>('SELECT id FROM walks WHERE ended_at IS NULL');
+  for (const { id } of open) {
+    const pts = await db.getAllAsync<{ lat: number; lng: number; ts: number }>(
+      'SELECT lat, lng, ts FROM gps_points WHERE walk_id = ? ORDER BY ts', id,
+    );
+    if (pts.length === 0) {
+      await db.runAsync('DELETE FROM walks WHERE id = ?', id);
+      continue;
+    }
+    let dist = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const d = haversineM(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng);
+      const dt = (pts[i].ts - pts[i - 1].ts) / 1000;
+      if (dt > 0 && d / dt <= MAX_SPEED_MS) dist += d;
+    }
+    await db.runAsync(
+      'UPDATE walks SET ended_at = ?, distance_m = ? WHERE id = ?',
+      pts[pts.length - 1].ts, dist, id,
+    );
+  }
 }
